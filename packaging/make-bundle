@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Builds what a release attaches for the Mavernix App Store, into OUT:
+#
+#   bandstand-x86_64.tar.gz   the program with everything it needs, in a folder
+#                             named bandstand/ (bin/, share/, lib/)
+#   mavernix-app.toml         the store listing, and the files it names
+#                             (bandstand.svg, screenshot.png)
+#
+# Run it in Fedora 44. That's the oldest system Mavernix supports, and a
+# program built against an older glibc and Qt also runs on newer ones
+# (Fedora 45, Arch). From the source folder:
+#
+#   podman run --rm -v "$PWD:/src:ro" -v "$PWD/out:/out" \
+#       registry.fedoraproject.org/fedora:44 /src/packaging/make-bundle /out
+set -euo pipefail
+
+out=${1:?usage: make-bundle OUT}
+source=$(cd "$(dirname "$0")/.." && pwd)
+
+# yt-dlp needs deno to play songs (helper/streams.py). The checksum is the one
+# GitHub shows for the release's deno-x86_64-unknown-linux-gnu.zip.
+deno_version=2.9.8
+deno_sha256=e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609
+
+dnf install -y --setopt=install_weak_deps=False \
+    gcc-c++ meson qt6-qtbase-devel qt6-qtdeclarative-devel python3-pip unzip
+
+work=$(mktemp -d)
+bundle="$work/bandstand"
+
+# The program, its QML and helper, desktop entry and icon.
+meson setup "$work/build" "$source" --prefix=/ --buildtype=release
+meson compile -C "$work/build"
+meson install -C "$work/build" --destdir "$bundle"
+strip "$bundle/bin/bandstand"
+
+# ytmusicapi and yt-dlp, as pure-Python wheels only.
+pip install --target "$bundle/lib/bandstand/python" --no-compile \
+    --only-binary=:all: --platform any --implementation py \
+    --requirement "$source/packaging/bundle-requirements.txt"
+
+curl --fail --location --silent --show-error --output "$work/deno.zip" \
+    "https://github.com/denoland/deno/releases/download/v$deno_version/deno-x86_64-unknown-linux-gnu.zip"
+echo "$deno_sha256  $work/deno.zip" | sha256sum --check --quiet
+mkdir -p "$bundle/lib/bandstand/bin"
+unzip -q "$work/deno.zip" -d "$bundle/lib/bandstand/bin"
+
+mkdir -p "$out"
+tar --create --gzip --file "$out/bandstand-x86_64.tar.gz" --directory "$work" --owner=0 --group=0 bandstand
+cp "$source/mavernix-app.toml" "$source/data/bandstand.svg" "$out/"
+cp "$source/docs/screenshot.png" "$out/screenshot.png"
+rm -rf "$work"
+ls -l "$out"

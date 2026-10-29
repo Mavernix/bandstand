@@ -1,0 +1,23 @@
+# How Bandstand shows up in the Mavernix App Store. A copy of this file is
+# attached to every release, together with the files it names; the format is
+# described in Mavernix's docs/app-store.md.
+
+title = "Bandstand"
+summary = "A music player for YouTube Music"
+category = "Music"
+developer = "Mavernix"
+license = "GPL-3.0-or-later"
+description = """
+Search YouTube Music, play songs, and keep playlists and liked songs. No account needed.
+
+Bandstand takes its look from whatever Mavernix theme you're running.
+"""
+
+# Files attached to the release, shown on the store page.
+icon = "bandstand.svg"
+screenshots = ["screenshot.png"]
+
+# Inside the bundle (bandstand-x86_64.tar.gz): the program to start, and the
+# desktop entry that puts it in the app grid and the dock.
+command = "bin/bandstand"
+desktop_entry = "share/applications/bandstand.desktop"

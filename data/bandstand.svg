@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Bandstand's icon: a white disc with one eighth note. -->
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <circle cx="128" cy="126" r="110" fill="#ffffff" stroke="#d6d6d6" stroke-width="2" filter="url(#shadow)"/>
+
+  <g fill="#e2582b">
+    <ellipse cx="108" cy="170" rx="26" ry="19" transform="rotate(-22 108 170)"/>
+    <rect x="124" y="64" width="11" height="104"/>
+    <path d="M135 64 C 150 76, 176 84, 172 118 C 168 100, 152 96, 135 94 Z"/>
+  </g>
+</svg>

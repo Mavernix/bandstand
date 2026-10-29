@@ -33,12 +33,16 @@ executable(
     'bandstand',
     [program_sources, logic_sources, moc_sources],
     dependencies: [qt_modules],
-    # qml and the helper are loaded straight from the source tree, so qml edits need no rebuild
-    cpp_args: [
-        '-DQML_DIRECTORY="' + meson.current_source_dir() / 'qml' + '"',
-        '-DHELPER_DIRECTORY="' + meson.current_source_dir() / 'helper' + '"',
-    ],
+    # a build that isn't installed loads qml and the helper straight from the source tree,
+    # so qml edits need no rebuild; an installed one finds them in ../share/bandstand
+    cpp_args: ['-DSOURCE_DIRECTORY="' + meson.current_source_dir() + '"'],
+    install: true,
 )
+
+install_subdir('qml', install_dir: get_option('datadir') / 'bandstand')
+install_subdir('helper', install_dir: get_option('datadir') / 'bandstand', exclude_directories: ['__pycache__'])
+install_data('data/bandstand.desktop', install_dir: get_option('datadir') / 'applications')
+install_data('data/bandstand.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 
 qt_test = dependency('qt6', modules: ['Core', 'Test'], required: false)
 if qt_test.found()

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Bandstand
+GenericName=Music Player
+Comment=Search YouTube Music, play songs and keep playlists
+Exec=bandstand
+Icon=bandstand
+Categories=AudioVideo;Audio;Player;
+StartupWMClass=bandstand
