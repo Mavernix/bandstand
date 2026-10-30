@@ -99,7 +99,7 @@ Item {
         Shell.Fill {
             anchors.fill: parent
             themeDirectory: page.themeDirectory
-            fill: page.looks.header_fill
+            fill: !Window.active ? (page.looks.header_fill_inactive ?? page.looks.header_fill) : page.looks.header_fill
         }
         Rectangle {
             anchors.bottom: parent.bottom
@@ -258,7 +258,8 @@ Item {
                 anchors.fill: parent
                 visible: row.playing
                 themeDirectory: page.themeDirectory
-                fill: page.looks.playing_fill
+                fill: !Window.active ? (page.looks.playing_fill_inactive ?? page.looks.playing_fill)
+                    : page.looks.playing_fill
             }
 
             readonly property color mainColor: ThemeValues.color(playing ? page.looks.playing_text_color : page.looks.text_color)

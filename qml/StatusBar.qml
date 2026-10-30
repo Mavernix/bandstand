@@ -36,7 +36,8 @@ Item {
     Shell.Fill {
         anchors.fill: parent
         themeDirectory: statusBar.themeDirectory
-        fill: statusBar.looks.fill
+        // like the top bar, paler while the window is in the background (if the theme says how)
+        fill: !Window.active ? (statusBar.looks.fill_inactive ?? statusBar.looks.fill) : statusBar.looks.fill
     }
     Rectangle {
         width: parent.width

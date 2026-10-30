@@ -100,6 +100,7 @@ Item {
             font.family: sidebar.fonts.music_heading.family
             font.pixelSize: sidebar.fonts.music_heading.size
             font.bold: sidebar.fonts.music_heading.bold ?? false
+            font.capitalization: sidebar.looks.heading_capitals ? Font.AllUppercase : Font.MixedCase
         }
         Text {
             visible: heading.hasAddButton
@@ -139,7 +140,9 @@ Item {
             width: parent.width - 2 * sidebar.looks.row_inset
             height: parent.height
             themeDirectory: sidebar.themeDirectory
-            fill: sidebar.looks.selected_fill
+            // paler while the window is in the background, if the theme says how
+            fill: !Window.active ? (sidebar.looks.selected_fill_inactive ?? sidebar.looks.selected_fill)
+                : sidebar.looks.selected_fill
         }
         Shell.Fill {
             visible: place.isDropTarget

@@ -45,7 +45,8 @@ Item {
     Item {
         id: cover
         x: display.looks.cover_inset
-        y: display.looks.cover_inset
+        // cover_top, if the theme places the cover lower or higher than in from the side
+        y: display.looks.cover_top ?? display.looks.cover_inset
         width: display.looks.cover_size
         height: display.looks.cover_size
         visible: display.hasTrack
@@ -63,7 +64,7 @@ Item {
         }
     }
 
-    // queue button, drawn as three lines
+    // queue button: the theme's glyph pictures (queue_glyph.normal/pressed/open) or three drawn lines
     Item {
         id: queueButton
         x: display.width - width - display.looks.queue_button_inset
@@ -71,13 +72,23 @@ Item {
         width: display.looks.queue_button_width
         height: display.looks.queue_button_height
 
+        readonly property var pictures: display.looks.queue_glyph
+
         Shell.Fill {
             anchors.fill: parent
             themeDirectory: display.themeDirectory
             fill: display.queueOpen || buttonArea.pressed ? display.looks.queue_button_open_fill
                 : display.looks.queue_button_fill
         }
+        Image {
+            visible: queueButton.pictures !== undefined
+            anchors.centerIn: parent
+            source: !visible ? ""
+                : "file://" + display.themeDirectory + "/" + (buttonArea.pressed ? queueButton.pictures.pressed
+                    : display.queueOpen ? queueButton.pictures.open : queueButton.pictures.normal)
+        }
         Column {
+            visible: queueButton.pictures === undefined
             anchors.centerIn: parent
             spacing: 3
             Repeater {
@@ -208,19 +219,32 @@ Item {
             width: parent.width - 2 * (progress.timeWidth + display.looks.time_gap)
             height: parent.height
 
-            Rectangle {
+            // the line and its played part are fills (line_fill, line_played_fill) when
+            // the theme gives them, else drawn in line_color and line_played_color
+            Shell.Fill {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width
                 height: display.looks.line_height
-                radius: height / 2
-                color: ThemeValues.color(display.looks.line_color)
+                themeDirectory: display.themeDirectory
+                fill: display.looks.line_fill
+                      ?? { color: display.looks.line_color, radius: display.looks.line_height / 2 }
             }
-            Rectangle {
+            Shell.Fill {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width * progress.fraction
+                width: knob.visible ? knob.x + knob.width / 2 : parent.width * progress.fraction
                 height: display.looks.line_height
-                radius: height / 2
-                color: ThemeValues.color(display.looks.line_played_color)
+                visible: width > 0
+                themeDirectory: display.themeDirectory
+                fill: display.looks.line_played_fill
+                      ?? { color: display.looks.line_played_color, radius: display.looks.line_height / 2 }
+            }
+            // the knob at the playing position, if the theme has a picture for it
+            Image {
+                id: knob
+                visible: display.looks.knob !== undefined
+                anchors.verticalCenter: parent.verticalCenter
+                x: (parent.width - width) * progress.fraction
+                source: visible ? "file://" + display.themeDirectory + "/" + display.looks.knob : ""
             }
             MouseArea {
                 anchors.fill: parent

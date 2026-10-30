@@ -47,8 +47,9 @@ Item {
         return display.queueButtonBottom()
     }
 
-    // uses the theme's images (top_bar.pictures.<kind>.normal/pressed/disabled) when there
-    // are any, otherwise a drawn glyph. the click area reaches a bit past the edge.
+    // uses the theme's images (top_bar.pictures.<kind>.normal/pressed/disabled, and
+    // normal_inactive/disabled_inactive for a window in the background) when there are any,
+    // otherwise a drawn glyph. the click area reaches a bit past the edge.
     component TransportButton: Item {
         id: button
 
@@ -59,7 +60,13 @@ Item {
         readonly property var pictures: bar.looks.pictures?.[kind]
         readonly property string pictureState: !usable ? "disabled" : area.pressed ? "pressed" : "normal"
         // a theme may only ship the normal image
-        readonly property string picturePath: pictures ? (pictures[pictureState] ?? pictures.normal) : ""
+        readonly property string picturePath: {
+            if (!pictures) {
+                return ""
+            }
+            const inBackground = bar.inBackground && !area.pressed ? pictures[pictureState + "_inactive"] : undefined
+            return inBackground ?? pictures[pictureState] ?? pictures.normal
+        }
 
         // the loader has no item yet during creation
         width: look.item?.implicitWidth ?? 0
@@ -176,6 +183,18 @@ Item {
             width: parent.width
             source: visible ? "file://" + bar.themeDirectory + "/" + volume.pictures.track : ""
             readonly property var slice: volume.pictures?.track_slice ?? [0, 0, 0, 0]
+            border.top: slice[0]
+            border.right: slice[1]
+            border.bottom: slice[2]
+            border.left: slice[3]
+        }
+        // the part up to the knob, if the theme has a picture for it
+        BorderImage {
+            visible: volume.pictures?.fill !== undefined
+            anchors.verticalCenter: parent.verticalCenter
+            width: knobPicture.x + knobPicture.width / 2
+            source: visible ? "file://" + bar.themeDirectory + "/" + volume.pictures.fill : ""
+            readonly property var slice: volume.pictures?.fill_slice ?? volume.pictures?.track_slice ?? [0, 0, 0, 0]
             border.top: slice[0]
             border.right: slice[1]
             border.bottom: slice[2]

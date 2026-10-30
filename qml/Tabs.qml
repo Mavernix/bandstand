@@ -19,6 +19,13 @@ Item {
 
     height: looks.height
 
+    // the bar behind the tabs, if the theme has one
+    Shell.Fill {
+        anchors.fill: parent
+        visible: tabs.looks.bar_fill !== undefined
+        themeDirectory: tabs.themeDirectory
+        fill: tabs.looks.bar_fill ?? ({})
+    }
     Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
