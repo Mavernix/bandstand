@@ -229,9 +229,13 @@ Item {
                 fill: display.looks.line_fill
                       ?? { color: display.looks.line_color, radius: display.looks.line_height / 2 }
             }
+            // with a knob, the played line runs to its middle, and is never
+            // narrower than its left end, which the knob covers at the start
             Shell.Fill {
                 anchors.verticalCenter: parent.verticalCenter
-                width: knob.visible ? knob.x + knob.width / 2 : parent.width * progress.fraction
+                width: knob.visible
+                    ? Math.max(knob.x + knob.width / 2, display.looks.line_played_fill?.slice?.[3] ?? 0)
+                    : parent.width * progress.fraction
                 height: display.looks.line_height
                 visible: width > 0
                 themeDirectory: display.themeDirectory
