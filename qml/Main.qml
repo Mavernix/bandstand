@@ -202,7 +202,7 @@ Window {
         looks: window.looks.sidebar
         fonts: window.fonts
         themeDirectory: window.themeDirectory
-        entries: window.config.sidebar ?? []
+        entries: window.config.sidebar ?? Routes.defaultSidebar(window.strings)
         playlists: window.userLibrary.playlists
         currentPage: navigation.page
         onPageChosen: name => navigation.show(name)

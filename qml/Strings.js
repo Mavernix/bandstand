@@ -23,6 +23,12 @@ const defaults = {
     column_artist: "Artist",
     column_album: "Album",
 
+    sidebar_music: "Music",
+    sidebar_library: "Library",
+    sidebar_playlists: "Playlists",
+
+    page_search: "Search",
+    page_home: "Home",
     page_liked: "Liked Songs",
     page_history: "History",
     page_albums: "Albums",

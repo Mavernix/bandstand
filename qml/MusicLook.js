@@ -480,7 +480,10 @@ function resolve(theme) {
     for (const [part, ownKey, added] of ownLooks) {
         if (ownMusic[part]?.[ownKey] !== undefined) {
             for (const key of added) {
-                delete music[part][key]
+                // unless the theme's table gives that part too
+                if (ownMusic[part][key] === undefined) {
+                    delete music[part][key]
+                }
             }
         }
     }

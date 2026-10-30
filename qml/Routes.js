@@ -6,6 +6,21 @@
 
 .pragma library
 
+// the sidebar for a config without config.music.sidebar, in the config's words
+function defaultSidebar(strings) {
+    return [
+        { heading: strings.sidebar_music },
+        { label: strings.page_search, page: "search" },
+        { label: strings.page_home, page: "home" },
+        { heading: strings.sidebar_library },
+        { label: strings.page_liked, page: "liked" },
+        { label: strings.page_history, page: "history" },
+        { label: strings.page_albums, page: "albums" },
+        { label: strings.page_artists, page: "artists" },
+        { heading: strings.sidebar_playlists, playlists: true },
+    ]
+}
+
 // "mine:abc" -> { kind: "mine", id: "abc" }, "history" -> { kind: "history", id: "" }
 function parse(page) {
     const colon = page.indexOf(":")
