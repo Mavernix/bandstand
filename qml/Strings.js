@@ -36,6 +36,7 @@ const defaults = {
     section_top_songs: "Top Songs",
     section_albums: "Albums",
     section_singles: "Singles",
+    shelf_recent: "Recently Played",
 
     empty: "",
     empty_liked: "",

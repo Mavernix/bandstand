@@ -109,7 +109,7 @@ Window {
         id: navigation
         client: window.musicClient
         library: window.userLibrary
-        startPage: window.config.start_page ?? "search"
+        startPage: window.config.start_page ?? "home"
         onPageChanged: {
             window.say("")
             playback.cancelPendingCard()
