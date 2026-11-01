@@ -171,6 +171,10 @@ function lookFromControls(p, controls, fontSize) {
             like_glyph_size: 14,
             // a heart stays red whatever the selection colour is
             liked_glyph_color: "#d0344a",
+            repeat_size: 16,
+            repeat_gap: 6,
+            repeat_color: p.quiet,
+            repeat_on_color: p.highlight,
         },
 
         // the theme's text field, as a picture if it has one

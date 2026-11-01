@@ -1,4 +1,5 @@
-// the lcd-style display in the middle of the top bar: cover, title, artist and the seek bar
+// the lcd-style display in the middle of the top bar: cover, title, artist, the seek bar
+// and the repeat button
 
 import QtQuick
 import "shell" as Shell
@@ -22,10 +23,13 @@ Item {
     property string problemText: ""
     property bool queueOpen: false
     property bool liked: false
+    // "off", "all" or "one"
+    property string repeat: "off"
 
     signal seekRequested(int positionMs)
     signal queueRequested()
     signal likeRequested()
+    signal repeatClicked()
 
     // bottom centre of the queue button in window coordinates, for the up next arrow
     function queueButtonBottom() {
@@ -181,7 +185,7 @@ Item {
         font.pixelSize: display.fonts.music_small.size
     }
 
-    // elapsed time, seek bar, remaining time
+    // elapsed time, seek bar, remaining time, repeat button
     Item {
         id: progress
         x: display.textLeft
@@ -191,6 +195,7 @@ Item {
         visible: display.hasTrack
 
         readonly property real timeWidth: display.looks.time_width
+        readonly property real repeatWidth: repeatButton.width + display.looks.repeat_gap
         readonly property real fraction: display.durationMs > 0
             ? Math.min(1, display.positionMs / display.durationMs) : 0
 
@@ -203,7 +208,7 @@ Item {
             font.pixelSize: display.fonts.music_time.size
         }
         Text {
-            x: parent.width - progress.timeWidth
+            x: parent.width - progress.repeatWidth - progress.timeWidth
             width: progress.timeWidth
             anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignRight
@@ -216,7 +221,7 @@ Item {
         Item {
             id: line
             x: progress.timeWidth + display.looks.time_gap
-            width: parent.width - 2 * (progress.timeWidth + display.looks.time_gap)
+            width: parent.width - 2 * (progress.timeWidth + display.looks.time_gap) - progress.repeatWidth
             height: parent.height
 
             // the line and its played part are fills (line_fill, line_played_fill) when
@@ -259,6 +264,34 @@ Item {
                         display.seekRequested(Math.round(Math.max(0, Math.min(mouse.x, width)) / width * display.durationMs))
                     }
                 }
+            }
+        }
+
+        // the theme's pictures (repeat_glyph.off/all/one) or a drawn glyph, lit while on
+        Item {
+            id: repeatButton
+            x: parent.width - width
+            anchors.verticalCenter: parent.verticalCenter
+            width: display.looks.repeat_size
+            height: display.looks.repeat_size
+
+            readonly property var pictures: display.looks.repeat_glyph
+
+            Image {
+                visible: repeatButton.pictures !== undefined
+                anchors.centerIn: parent
+                source: visible ? "file://" + display.themeDirectory + "/" + repeatButton.pictures[display.repeat] : ""
+            }
+            RepeatGlyph {
+                visible: repeatButton.pictures === undefined
+                anchors.fill: parent
+                one: display.repeat === "one"
+                color: ThemeValues.color(display.repeat === "off" ? display.looks.repeat_color
+                    : display.looks.repeat_on_color)
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: display.repeatClicked()
             }
         }
     }

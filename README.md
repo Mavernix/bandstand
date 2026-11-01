@@ -23,6 +23,21 @@ Start `build/bandstand` from a Mavernix session.
 
 Your library lives in `~/.local/share/bandstand` as plain JSON files.
 
+Songs you've played are kept in `~/.cache/bandstand/audio`, so they start at once the next time, and so is the song that comes next in Up Next. Once that folder holds 2 GB, the songs played longest ago make room. `cache_folder` and `cache_limit_mb` in the config's `[music]` table change both; a limit of 0 keeps nothing.
+
+## Keys
+
+| Key | Does |
+|---|---|
+| Space | Play or pause |
+| Ctrl+→ / Ctrl+← | Next song / previous song |
+| Ctrl+↑ / Ctrl+↓ | Louder / quieter |
+| Ctrl+F | Search |
+
+The media keys work everywhere, also while Bandstand is in the background: Bandstand is an MPRIS player, so `playerctl`, which Mavernix runs for those keys, controls it.
+
+The button at the end of the seek bar repeats: once for the whole list (the album or playlist starts over after its last song), twice for the song playing, a third time turns it off. `playerctl loop` sets it too.
+
 ## Release
 
 Push a version tag, such as `v0.2.0`, with the release notes as the tag's message. `.github/workflows/release.yml` then builds the bundle the App Store installs (`packaging/make-bundle`) and publishes the release. `mavernix-app.toml` is what the store shows; how that works is in Mavernix's [docs/app-store.md](https://github.com/Mavernix/mavernix/blob/main/docs/app-store.md).

@@ -25,6 +25,7 @@ Item {
     property real volume: 1.0
     property bool queueOpen: false
     property bool liked: false
+    property string repeat: "off"
 
     property string idleText: ""
     property string loadingText: ""
@@ -38,6 +39,7 @@ Item {
     signal searchAccepted(string text)
     signal queueRequested()
     signal likeRequested()
+    signal repeatClicked()
 
     function focusSearch() {
         search.focusAndSelect()
@@ -244,8 +246,10 @@ Item {
         loadingText: bar.loadingText
         queueOpen: bar.queueOpen
         liked: bar.liked
+        repeat: bar.repeat
         onQueueRequested: bar.queueRequested()
         onLikeRequested: bar.likeRequested()
+        onRepeatClicked: bar.repeatClicked()
         onSeekRequested: positionMs => bar.seekRequested(positionMs)
     }
 

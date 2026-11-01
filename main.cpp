@@ -13,6 +13,7 @@
 #include <cstdlib>
 
 #include "library.hpp"
+#include "media-controls.hpp"
 #include "music-client.hpp"
 #include "play-queue.hpp"
 
@@ -109,6 +110,9 @@ int main(int argc, char **argv)
     MusicClient client(helper_directory + QStringLiteral("/music_helper.py"), helper_arguments);
     PlayQueue queue;
     Library library(folder);
+
+    // a type rather than a context property, so qml can bind the playback state to it
+    qmlRegisterType<MediaControls>("Bandstand", 1, 0, "MediaControls");
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("settings"), settings);

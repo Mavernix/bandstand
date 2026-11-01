@@ -3,6 +3,7 @@
 import QtQml
 import QtQuick
 import QtQuick.Window
+import Bandstand
 import "shell/ThemeValues.js" as ThemeValues
 import "MusicLook.js" as MusicLook
 import "Routes.js" as Routes
@@ -103,6 +104,7 @@ Window {
         library: window.userLibrary
         strings: window.strings
         onNotify: text => window.say(text)
+        onJumped: positionMs => mediaControls.seeked(positionMs)
     }
 
     Navigation {
@@ -126,6 +128,68 @@ Window {
         }
     }
 
+    // the media keys reach us through mpris (the compositor runs playerctl for them),
+    // and so do the panel's now playing controls
+    MediaControls {
+        id: mediaControls
+        playing: playback.isPlaying
+        track: playback.nowPlaying
+        durationMs: playback.durationMs
+        positionMs: playback.positionMs
+        canNext: playback.canNext
+        canPrevious: window.playQueue.hasPrevious
+        volume: playback.volume
+        repeat: playback.repeat
+
+        onPlayPauseRequested: playback.playOrPause()
+        onPlayRequested: playback.play()
+        onPauseRequested: playback.pause()
+        onStopRequested: playback.stop()
+        onNextRequested: playback.next()
+        onPreviousRequested: playback.previous()
+        onSeekRequested: positionMs => playback.seek(positionMs)
+        onVolumeRequested: volume => playback.volume = volume
+        onRepeatRequested: repeat => playback.repeat = repeat
+        onRaiseRequested: {
+            window.show()
+            window.raise()
+            window.requestActivate()
+        }
+    }
+
+    // as in itunes. a focused text field keeps space and ctrl+arrows for itself.
+    // the media keys only arrive here when nothing grabbed them before us.
+    Shortcut {
+        sequences: ["Space", "Media Play", "Toggle Media Play/Pause"]
+        enabled: !sheet.visible
+        onActivated: playback.playOrPause()
+    }
+    Shortcut {
+        sequences: ["Media Pause"]
+        onActivated: playback.pause()
+    }
+    Shortcut {
+        sequences: ["Ctrl+Right", "Media Next"]
+        onActivated: playback.next()
+    }
+    Shortcut {
+        sequences: ["Ctrl+Left", "Media Previous"]
+        onActivated: playback.previous()
+    }
+    Shortcut {
+        sequences: ["Media Stop"]
+        onActivated: playback.stop()
+    }
+    Shortcut {
+        sequences: ["Ctrl+Up"]
+        autoRepeat: true
+        onActivated: playback.changeVolume(playback.volumeStep)
+    }
+    Shortcut {
+        sequences: ["Ctrl+Down"]
+        autoRepeat: true
+        onActivated: playback.changeVolume(-playback.volumeStep)
+    }
     Shortcut {
         sequences: [StandardKey.Find]
         onActivated: topBar.focusSearch()
@@ -226,7 +290,7 @@ Window {
         playing: playback.isPlaying
         canPlay: playback.hasSong
         canPrevious: playback.hasSong
-        canNext: window.playQueue.hasNext
+        canNext: playback.canNext
         track: playback.nowPlaying
         positionMs: playback.positionMs
         durationMs: playback.durationMs
@@ -235,6 +299,7 @@ Window {
         volume: playback.volume
         queueOpen: upNext.visible
         liked: playback.nowPlayingLiked
+        repeat: playback.repeat
 
         idleText: window.strings.display_idle
         loadingText: window.strings.display_loading
@@ -247,6 +312,7 @@ Window {
         onVolumeRequested: volume => playback.volume = volume
         onSearchAccepted: text => navigation.search(text)
         onLikeRequested: window.userLibrary.setLiked(playback.nowPlaying, !playback.nowPlayingLiked)
+        onRepeatClicked: playback.cycleRepeat()
         onQueueRequested: {
             if (upNext.visible) {
                 upNext.close()

@@ -13,15 +13,15 @@ project(
 )
 
 qt = import('qt6')
-qt_modules = dependency('qt6', modules: ['Core', 'Gui', 'Qml', 'Quick'])
+qt_modules = dependency('qt6', modules: ['Core', 'Gui', 'Qml', 'Quick', 'DBus'])
 
 # shared by the app and the tests
 logic_sources = [
     'track.cpp', 'card.cpp', 'track-model.cpp', 'card-model.cpp',
     'playlist-list.cpp', 'library.cpp', 'play-queue.cpp',
 ]
-program_sources = ['main.cpp', 'music-client.cpp', 'content-page.cpp']
-program_headers = ['music-client.hpp', 'content-page.hpp']
+program_sources = ['main.cpp', 'music-client.cpp', 'content-page.cpp', 'media-controls.cpp']
+program_headers = ['music-client.hpp', 'content-page.hpp', 'media-controls.hpp']
 logic_headers = ['track-model.hpp', 'card-model.hpp', 'playlist-list.hpp', 'library.hpp', 'play-queue.hpp']
 
 moc_sources = qt.compile_moc(
