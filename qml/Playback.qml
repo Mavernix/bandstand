@@ -122,11 +122,13 @@ Item {
     }
 
     function songEnded() {
-        if (repeat === "one") {
+        // a song hidden while it played finishes, but doesn't come round again
+        const hiddenNow = hasSong && library.isHidden(nowPlaying)
+        if (repeat === "one" && !hiddenNow) {
             startCurrent()
             // the same song from the start: mpris clients only hear of that as a jump
             jumped(0)
-        } else if (nextRow() >= 0) {
+        } else if (nextRow() >= 0 && !(hiddenNow && nextRow() === queue.current)) {
             next()
         } else {
             // back to the idle display once the queue runs out
