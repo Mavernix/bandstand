@@ -27,7 +27,8 @@ class MusicClient : public QObject
     Q_PROPERTY(QString problem READ problem NOTIFY problemChanged)
 
   public:
-    explicit MusicClient(const QString& helper_script, QObject *parent = nullptr);
+    // helper_arguments go after the script, e.g. where it keeps played songs
+    MusicClient(const QString& helper_script, const QStringList& helper_arguments, QObject *parent = nullptr);
     ~MusicClient() override;
 
     TrackModel *results();
@@ -42,6 +43,9 @@ class MusicClient : public QObject
     Q_INVOKABLE void search(const QString& query, const QString& kind = QStringLiteral("songs"));
     // the url it finds expires after a few hours
     Q_INVOKABLE void findAudio(const QString& video_id);
+    // looks up a song that's coming up and has the helper download it into its cache,
+    // so it starts right away. nothing comes back; a failure only gets logged.
+    Q_INVOKABLE void prepareAudio(const QString& video_id);
     // kind is "album", "artist", "playlist" or "home" (browse_id is ignored for home).
     // pages are cached and only re-requested when they failed or went stale.
     Q_INVOKABLE ContentPage *page(const QString& kind, const QString& browse_id);
@@ -60,6 +64,7 @@ class MusicClient : public QObject
     {
         Search,
         Audio,
+        Prepare,
         Page,
         Radio,
     };
@@ -67,7 +72,7 @@ class MusicClient : public QObject
     struct Request
     {
         Kind kind;
-        QString video_id;     // audio, radio
+        QString video_id;     // audio, prepare, radio
         QString search_kind;  // search
         QPointer<ContentPage> page;
     };

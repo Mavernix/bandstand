@@ -15,11 +15,11 @@ static constexpr int HELPER_END_TIMEOUT_MS = 500;
 // the helper retries youtube a few times itself; past this we give up on it
 static constexpr int REQUEST_TIMEOUT_MS = 30000;
 
-MusicClient::MusicClient(const QString& helper_script, QObject *parent)
+MusicClient::MusicClient(const QString& helper_script, const QStringList& helper_arguments, QObject *parent)
     : QObject(parent)
 {
     helper.setProgram(QStringLiteral("python3"));
-    helper.setArguments({helper_script});
+    helper.setArguments(QStringList{helper_script} + helper_arguments);
 
     connect(&helper, &QProcess::readyReadStandardOutput, this, &MusicClient::read_output);
     connect(&helper, &QProcess::readyReadStandardError, this, &MusicClient::read_errors);
@@ -106,6 +106,14 @@ void MusicClient::findAudio(const QString& video_id)
         return;
     }
     send({{"command", "stream"}, {"video_id", video_id}}, {Kind::Audio, video_id, {}, nullptr});
+}
+
+void MusicClient::prepareAudio(const QString& video_id)
+{
+    if (start_helper().isEmpty())
+    {
+        send({{"command", "prepare"}, {"video_id", video_id}}, {Kind::Prepare, video_id, {}, nullptr});
+    }
 }
 
 void MusicClient::startRadio(const QString& video_id)
@@ -262,6 +270,8 @@ void MusicClient::handle_answer(const QJsonObject& answer)
     case Kind::Audio:
         emit audioFound(request.video_id, QUrl(answer.value(QStringLiteral("url")).toString()));
         break;
+    case Kind::Prepare:
+        break;
     }
 }
 
@@ -321,6 +331,11 @@ void MusicClient::fail(int id, const Request& request, const QString& message)
         break;
     case Kind::Audio:
         emit audioNotFound(request.video_id, message);
+        break;
+    case Kind::Prepare:
+        // it gets looked up again when it's its turn, and fails visibly then
+        std::fprintf(stderr, "bandstand: could not prepare %s: %s\n",
+            qPrintable(request.video_id), qPrintable(message));
         break;
     }
 }

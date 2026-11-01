@@ -93,7 +93,20 @@ int main(int argc, char **argv)
     const QString folder = expanded(music_config.value(QStringLiteral("folder"),
         QStringLiteral("~/.local/share/bandstand")).toString());
 
-    MusicClient client(helper_directory + QStringLiteral("/music_helper.py"));
+    // the helper keeps played songs in ~/.cache/bandstand/audio unless the config says otherwise
+    QStringList helper_arguments;
+    if (music_config.contains(QStringLiteral("cache_folder")))
+    {
+        helper_arguments << QStringLiteral("--cache-dir")
+                         << expanded(music_config.value(QStringLiteral("cache_folder")).toString());
+    }
+    if (music_config.contains(QStringLiteral("cache_limit_mb")))
+    {
+        helper_arguments << QStringLiteral("--cache-limit-mb")
+                         << QString::number(music_config.value(QStringLiteral("cache_limit_mb")).toInt());
+    }
+
+    MusicClient client(helper_directory + QStringLiteral("/music_helper.py"), helper_arguments);
     PlayQueue queue;
     Library library(folder);
 

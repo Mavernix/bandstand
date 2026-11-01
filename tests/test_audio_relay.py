@@ -67,7 +67,8 @@ class AudioRelayTest(unittest.TestCase):
         return server
 
     def relay_url(self, server):
-        return audio_relay.AudioRelay().add_song(server.url, len(SONG), "audio/webm", {"User-Agent": "test"})
+        song = audio_relay.Song(server.url, len(SONG), "audio/webm", {"User-Agent": "test"})
+        return audio_relay.AudioRelay().add_song(song)
 
     def fetch(self, url, range_header=None):
         headers = {"Range": range_header} if range_header else {}

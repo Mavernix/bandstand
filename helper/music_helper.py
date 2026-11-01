@@ -12,25 +12,36 @@
 #   home                 -> shelves: [{title, items}], items are tracks or cards
 #   radio     video_id   -> tracks, the seed song first
 #   stream    video_id   -> url, expires_epoch (0 if unknown), duration_seconds
+#   prepare   video_id   -> nothing, once the song is looked up; it then downloads
+#                           into the song cache, so playing it later starts at once
+#
+# options: --cache-dir DIR (default $XDG_CACHE_HOME/bandstand/audio) and
+# --cache-limit-mb N (default 2048, 0 keeps no songs on disk). see song_cache.py.
 #
 # requests run concurrently (stream lookups take seconds), so responses can come
 # back out of order. match them by id.
 
+import argparse
 import json
+import os
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from audio_relay import AudioRelay
+from song_cache import SongCache
 from streams import YtDlpStreams
 from youtube_music import HelperError, YouTubeMusic
 
 # a search sends four requests at once; leave room so a song lookup never waits behind it
 MAX_WORKERS = 8
 
+DEFAULT_CACHE_LIMIT_MB = 2048
+
 REQUIRED_ARGS = {
     "search": ("query",),
     "stream": ("video_id",),
+    "prepare": ("video_id",),
     "album": ("browse_id",),
     "artist": ("browse_id",),
     "playlist": ("browse_id",),
@@ -73,6 +84,8 @@ class Helper:
             return self._music.search(request["query"], request.get("kind", "songs"))
         if command == "stream":
             return self._streams.find_audio(request["video_id"])
+        if command == "prepare":
+            return self._streams.prepare(request["video_id"])
         if command == "album":
             return self._music.album(request["browse_id"])
         if command == "artist":
@@ -109,8 +122,24 @@ def serve(lines, output, helper):
             pool.submit(respond, request)
 
 
+def default_cache_dir():
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
+    return os.path.join(base, "bandstand", "audio")
+
+
 def main():
-    serve(sys.stdin, sys.stdout, Helper(YouTubeMusic(), YtDlpStreams(AudioRelay())))
+    parser = argparse.ArgumentParser(description="search youtube music and play songs, over json lines")
+    parser.add_argument("--cache-dir", default=default_cache_dir())
+    parser.add_argument("--cache-limit-mb", type=int, default=DEFAULT_CACHE_LIMIT_MB)
+    options = parser.parse_args()
+
+    cache = None
+    if options.cache_limit_mb > 0:
+        cache = SongCache(options.cache_dir, options.cache_limit_mb * 1024 * 1024)
+        # a smaller limit than last time, or leftovers of a crash
+        cache.evict()
+    relay = AudioRelay(cache)
+    serve(sys.stdin, sys.stdout, Helper(YouTubeMusic(), YtDlpStreams(relay, cache)))
 
 
 if __name__ == "__main__":

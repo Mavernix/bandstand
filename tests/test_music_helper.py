@@ -6,6 +6,7 @@ import pathlib
 import sys
 import threading
 import unittest
+import unittest.mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "helper"))
 
@@ -50,6 +51,11 @@ class FakeStreams:
         self.error = error
         self.block_on = block_on
         self.video_ids = []
+        self.prepared = []
+
+    def prepare(self, video_id):
+        self.prepared.append(video_id)
+        return {}
 
     def find_audio(self, video_id):
         self.video_ids.append(video_id)
@@ -125,6 +131,12 @@ class HandleTest(unittest.TestCase):
         )
         self.assertEqual(streams.video_ids, ["abc"])
 
+    def test_prepare_answers_with_nothing_but_ok(self):
+        streams = FakeStreams()
+        response = make_helper(streams=streams).handle({"id": 9, "command": "prepare", "video_id": "abc"})
+        self.assertEqual(response, {"id": 9, "ok": True})
+        self.assertEqual(streams.prepared, ["abc"])
+
     def test_unknown_command_lists_known_ones(self):
         response = make_helper().handle({"id": 1, "command": "dance"})
         self.assertFalse(response["ok"])
@@ -134,7 +146,7 @@ class HandleTest(unittest.TestCase):
 
     def test_missing_or_empty_args_rejected(self):
         for command, name in [
-            ("search", "query"), ("stream", "video_id"), ("album", "browse_id"),
+            ("search", "query"), ("stream", "video_id"), ("prepare", "video_id"), ("album", "browse_id"),
             ("artist", "browse_id"), ("playlist", "browse_id"), ("radio", "video_id"),
         ]:
             for value in (None, "", "   ", 5):
@@ -162,6 +174,14 @@ class HandleTest(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertIn("RuntimeError", response["error"])
         self.assertIn("network is down", response["error"])
+
+
+class OptionsTest(unittest.TestCase):
+    def test_cache_dir_follows_xdg_cache_home(self):
+        with unittest.mock.patch.dict("os.environ", {"XDG_CACHE_HOME": "/tmp/xdg"}):
+            self.assertEqual(music_helper.default_cache_dir(), "/tmp/xdg/bandstand/audio")
+        with unittest.mock.patch.dict("os.environ", {"XDG_CACHE_HOME": "", "HOME": "/home/someone"}):
+            self.assertEqual(music_helper.default_cache_dir(), "/home/someone/.cache/bandstand/audio")
 
 
 class ServeTest(unittest.TestCase):
