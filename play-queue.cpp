@@ -4,6 +4,8 @@
 
 #include <algorithm>
 
+#include "library.hpp"
+
 int PlayQueue::current() const
 {
     return current_row;
@@ -24,13 +26,32 @@ int PlayQueue::up_next_count() const
     return current_row < 0 ? 0 : items.size() - 1 - current_row;
 }
 
+void PlayQueue::set_library(const Library *new_library)
+{
+    library = new_library;
+    connect(library, &Library::hiddenChanged, this, &PlayQueue::drop_hidden);
+}
+
 void PlayQueue::playFrom(TrackModel *songs, int row)
 {
     if (songs == nullptr || row < 0 || row >= songs->all().size())
     {
         return;
     }
-    replace(songs->all(), row);
+    int new_current = -1;
+    const QVector<Track> tracks = without_hidden(songs->all(), row, &new_current);
+    replace(tracks, new_current);
+}
+
+void PlayQueue::playAll(TrackModel *songs)
+{
+    if (songs == nullptr || songs->all().isEmpty())
+    {
+        return;
+    }
+    // a list of nothing but hidden songs was asked for anyway, so it plays
+    const QVector<Track> tracks = without_hidden(songs->all(), -1, nullptr);
+    replace(tracks.isEmpty() ? songs->all() : tracks, 0);
 }
 
 void PlayQueue::playShuffled(TrackModel *songs)
@@ -40,7 +61,11 @@ void PlayQueue::playShuffled(TrackModel *songs)
         return;
     }
 
-    QVector<Track> shuffled = songs->all();
+    QVector<Track> shuffled = without_hidden(songs->all(), -1, nullptr);
+    if (shuffled.isEmpty())
+    {
+        shuffled = songs->all();
+    }
     std::shuffle(shuffled.begin(), shuffled.end(), *QRandomGenerator::global());
     replace(shuffled, 0);
 }
@@ -66,7 +91,8 @@ void PlayQueue::playList(const QVariantList& songs, int row)
 
     if (new_current >= 0)
     {
-        replace(tracks, new_current);
+        const QVector<Track> shown = without_hidden(tracks, new_current, &new_current);
+        replace(shown, new_current);
     }
 }
 
@@ -167,4 +193,47 @@ void PlayQueue::insert_at(int row, const QVariantMap& song)
     }
     endInsertRows();
     emit placeChanged();
+}
+
+QVector<Track> PlayQueue::without_hidden(const QVector<Track>& tracks, int keep, int *kept) const
+{
+    QVector<Track> shown;
+    for (int row = 0; row < tracks.size(); ++row)
+    {
+        if (row == keep && kept != nullptr)
+        {
+            *kept = shown.size();
+        }
+        if (row == keep || library == nullptr || !library->is_hidden(tracks.at(row)))
+        {
+            shown.append(tracks.at(row));
+        }
+    }
+    return shown;
+}
+
+void PlayQueue::drop_hidden()
+{
+    bool dropped = false;
+    // backwards, so the rows still to check don't move
+    for (int row = items.size() - 1; row >= 0; --row)
+    {
+        if (row == current_row || !library->is_hidden(items.at(row)))
+        {
+            continue;
+        }
+        beginRemoveRows(QModelIndex(), row, row);
+        items.remove(row);
+        if (row < current_row)
+        {
+            --current_row;
+        }
+        endRemoveRows();
+        dropped = true;
+    }
+
+    if (dropped)
+    {
+        emit placeChanged();
+    }
 }

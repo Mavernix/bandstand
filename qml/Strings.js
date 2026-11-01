@@ -73,6 +73,8 @@ const defaults = {
     menu_start_radio: "Start Radio",
     menu_remove_playlist: "Remove from Playlist",
     menu_remove_history: "Remove from History",
+    menu_hide: "Don’t Suggest This Song",
+    menu_unhide: "Suggest This Song Again",
     menu_open: "Open",
     menu_save: "Add to Library",
     menu_unsave: "Remove from Library",
@@ -82,6 +84,8 @@ const defaults = {
     notice_already: "“%1” has this song already",
     notice_liked: "Added to Liked Songs",
     notice_already_liked: "This song is in Liked Songs already",
+    notice_hidden: "This song won’t come up on Home or in Up Next anymore",
+    notice_unhidden: "This song can come up on Home and in Up Next again",
     confirm_delete_playlist: "Delete the playlist “%1”?",
     confirm_clear_history: "Clear the history of what was played?",
 

@@ -77,6 +77,12 @@ Item {
         startCurrent()
     }
 
+    // from the first song that isn't hidden
+    function playAll(songs) {
+        queue.playAll(songs)
+        startCurrent()
+    }
+
     function playShuffled(songs) {
         queue.playShuffled(songs)
         startCurrent()
@@ -196,7 +202,7 @@ Item {
     function playLoadedCard(page) {
         if (page.tracks.count > 0) {
             notify("")
-            playSongs(page.tracks, 0)
+            playAll(page.tracks)
         } else {
             notify(page.problem !== "" ? page.problem : strings.empty_remote)
         }

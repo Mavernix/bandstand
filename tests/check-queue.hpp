@@ -25,4 +25,11 @@ class CheckQueue : public QObject
     void playShuffledQueuesEverySongOnce();
     void playShuffledEmptyDoesNothing();
     void placeChangedOnlyOnRealChanges();
+
+    void playFromLeavesOutHiddenButNotThePickedSong();
+    void playListLeavesOutHidden();
+    void radioKeepsItsHiddenSeed();
+    void playAllStartsAtFirstShownSong();
+    void playShuffledLeavesOutHidden();
+    void hidingDropsSongFromQueueButNotThePlayingOne();
 };

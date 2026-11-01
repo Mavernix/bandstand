@@ -18,6 +18,7 @@ static constexpr int RETRY_DELAY_MS = 2000;
 
 static const QString LIKED = QStringLiteral("liked");
 static const QString HISTORY = QStringLiteral("history");
+static const QString HIDDEN = QStringLiteral("hidden");
 static const QString ALBUMS = QStringLiteral("albums");
 static const QString ARTISTS = QStringLiteral("artists");
 static const QString PLAYLIST_PREFIX = QStringLiteral("playlist:");
@@ -38,6 +39,27 @@ static int index_of_song(const TrackModel& tracks, const QString& video_id)
     const QVector<Track>& all = tracks.all();
     const auto it = std::find_if(all.begin(), all.end(), [&](const Track& track) { return track.video_id == video_id; });
     return it == all.end() ? -1 : int(it - all.begin());
+}
+
+// youtube has one song under several video ids (the song, its music video, an upload of it),
+// so the same title by the same artist is the same song. empty when either is missing,
+// such a song only matches by its id
+static QString song_key(const Track& track)
+{
+    const QString title = track.title.simplified().toCaseFolded();
+    QString artist = track.artist.simplified().toCaseFolded();
+    // the auto-made channel of an artist is "NAME - Topic"
+    if (artist.endsWith(QLatin1String(" - topic")))
+    {
+        artist.chop(8);
+    }
+    return title.isEmpty() || artist.isEmpty() ? QString() : title + QLatin1Char('\n') + artist;
+}
+
+static bool same_song(const Track& a, const Track& b)
+{
+    const QString key = song_key(a);
+    return a.video_id == b.video_id || (!key.isEmpty() && key == song_key(b));
 }
 
 Library::Library(const QString& folder, QObject *parent)
@@ -90,6 +112,11 @@ int Library::liked_version() const
 int Library::saved_version() const
 {
     return saved_counter;
+}
+
+int Library::hidden_version() const
+{
+    return hidden_counter;
 }
 
 QString Library::problem() const
@@ -201,7 +228,7 @@ void Library::setLiked(const QVariantMap& song, bool liked)
 void Library::recordPlayed(const QVariantMap& song)
 {
     const Track track = Track::from_qml(song);
-    if (!track.is_valid())
+    if (!track.is_valid() || is_hidden(track))
     {
         return;
     }
@@ -221,9 +248,79 @@ void Library::recordPlayed(const QVariantMap& song)
     }
 }
 
+void Library::removeFromHistory(const QString& video_id)
+{
+    history_songs.remove_at(index_of_song(history_songs, video_id));
+}
+
 void Library::clearHistory()
 {
     history_songs.clear();
+}
+
+bool Library::isHidden(const QVariantMap& song) const
+{
+    return is_hidden(Track::from_qml(song));
+}
+
+bool Library::is_hidden(const Track& track) const
+{
+    const QString key = song_key(track);
+    return hidden_ids.contains(track.video_id) || (!key.isEmpty() && hidden_titles.contains(key));
+}
+
+void Library::setHidden(const QVariantMap& song, bool hidden)
+{
+    const Track track = Track::from_qml(song);
+    if (!track.is_valid())
+    {
+        return;
+    }
+
+    if (hidden)
+    {
+        if (!is_hidden(track))
+        {
+            hidden_songs.insert(0, track);
+        }
+        remove_from_history(track);
+        return;
+    }
+
+    // whatever hides it, also the song under another video id
+    for (int row = hidden_songs.rowCount() - 1; row >= 0; --row)
+    {
+        if (same_song(hidden_songs.all().at(row), track))
+        {
+            hidden_songs.remove_at(row);
+        }
+    }
+}
+
+QVariantList Library::withoutHidden(const QVariantList& items) const
+{
+    QVariantList shown;
+    for (const QVariant& item : items)
+    {
+        // cards have no video id, and stay
+        const Track track = Track::from_qml(item.toMap());
+        if (!track.is_valid() || !is_hidden(track))
+        {
+            shown.append(item);
+        }
+    }
+    return shown;
+}
+
+void Library::remove_from_history(const Track& track)
+{
+    for (int row = history_songs.rowCount() - 1; row >= 0; --row)
+    {
+        if (same_song(history_songs.all().at(row), track))
+        {
+            history_songs.remove_at(row);
+        }
+    }
 }
 
 bool Library::isSaved(const QString& browse_id) const
@@ -260,9 +357,21 @@ void Library::load()
     };
     liked_songs.set_tracks(list(LIKED, "tracks"));
     history_songs.set_tracks(list(HISTORY, "tracks"));
+    hidden_songs.set_tracks(list(HIDDEN, "tracks"));
     saved_albums.set_cards(list(ALBUMS, "albums"));
     saved_artists.set_cards(list(ARTISTS, "artists"));
     rebuild_liked_ids();
+    rebuild_hidden_ids();
+
+    // the two files are written one after the other, a crash in between can leave a hidden
+    // song in the history; it's left out here and the next write of the history drops it
+    QVector<Track> played = history_songs.all();
+    played.erase(std::remove_if(played.begin(), played.end(), [this](const Track& track) { return is_hidden(track); }),
+        played.end());
+    if (played.size() != history_songs.rowCount())
+    {
+        history_songs.set_all(played);
+    }
 }
 
 void Library::load_playlists()
@@ -335,6 +444,13 @@ void Library::watch_for_changes()
         mark_dirty(LIKED);
     });
     connect(&history_songs, &TrackModel::changed, this, [this] { mark_dirty(HISTORY); });
+    connect(&hidden_songs, &TrackModel::changed, this, [this]
+    {
+        rebuild_hidden_ids();
+        ++hidden_counter;
+        emit hiddenChanged();
+        mark_dirty(HIDDEN);
+    });
 
     connect(&saved_albums, &CardModel::changed, this, [this]
     {
@@ -356,6 +472,21 @@ void Library::rebuild_liked_ids()
     for (const Track& track : liked_songs.all())
     {
         liked_ids.insert(track.video_id);
+    }
+}
+
+void Library::rebuild_hidden_ids()
+{
+    hidden_ids.clear();
+    hidden_titles.clear();
+    for (const Track& track : hidden_songs.all())
+    {
+        hidden_ids.insert(track.video_id);
+        const QString key = song_key(track);
+        if (!key.isEmpty())
+        {
+            hidden_titles.insert(key);
+        }
     }
 }
 
@@ -409,6 +540,10 @@ bool Library::write_file(const QString& what)
     else if (what == HISTORY)
     {
         object.insert(QStringLiteral("tracks"), to_json(history_songs));
+    }
+    else if (what == HIDDEN)
+    {
+        object.insert(QStringLiteral("tracks"), to_json(hidden_songs));
     }
     else if (what == ALBUMS)
     {

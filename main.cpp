@@ -108,8 +108,9 @@ int main(int argc, char **argv)
     }
 
     MusicClient client(helper_directory + QStringLiteral("/music_helper.py"), helper_arguments);
-    PlayQueue queue;
     Library library(folder);
+    PlayQueue queue;
+    queue.set_library(&library);
 
     // a type rather than a context property, so qml can bind the playback state to it
     qmlRegisterType<MediaControls>("Bandstand", 1, 0, "MediaControls");

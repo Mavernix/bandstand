@@ -1,5 +1,6 @@
 // the start page: what was played lately, over youtube music's home page of
 // shelves of cards and songs. the local shelf shows at once, even offline.
+// hidden songs (Library.isHidden) are left off every shelf.
 
 import QtQuick
 import "Routes.js" as Routes
@@ -14,14 +15,15 @@ Flickable {
 
     // how many of the latest played songs the first shelf shows
     readonly property int recentLimit: 20
-    // the history newest first, as track maps marked the way shelves want them
+    // the history newest first, as track maps marked the way shelves want them;
+    // fromHistory gets them a "remove from history" in their menu
     property var recentItems: []
 
     function updateRecentItems() {
         const history = hub.library.history
         const items = []
         for (let row = 0; row < Math.min(history.count, recentLimit); row++) {
-            items.push(Object.assign({ type: "track" }, history.trackAt(row)))
+            items.push(Object.assign({ type: "track", fromHistory: true }, history.trackAt(row)))
         }
         recentItems = items
     }
@@ -96,8 +98,17 @@ Flickable {
             Shelf {
                 required property var modelData
 
+                // filtered per shelf, so hiding a song doesn't rebuild the repeater
+                // and scroll every shelf back to the start
+                readonly property var shownItems: {
+                    // hiddenVersion is a revision counter for withoutHidden()
+                    page.hub.library.hiddenVersion
+                    return page.hub.library.withoutHidden(modelData.items)
+                }
+
+                visible: shownItems.length > 0
                 title: modelData.title
-                items: modelData.items
+                items: shownItems
             }
         }
     }

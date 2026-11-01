@@ -23,6 +23,8 @@ Start `build/bandstand` from a Mavernix session.
 
 Your library lives in `~/.local/share/bandstand` as plain JSON files.
 
+Right-click a song for what you can do with it. On Home's Recently Played shelf and in History, that includes Remove from History. Don't Suggest This Song keeps a song off Home's shelves and out of History, and Up Next skips it unless you pick it yourself; Liked Songs and your playlists keep it. Search finds it still, and right-clicking it there offers Suggest This Song Again. Hidden songs are listed in `hidden.json`.
+
 Songs you've played are kept in `~/.cache/bandstand/audio`, so they start at once the next time, and so is the song that comes next in Up Next. Once that folder holds 2 GB, the songs played longest ago make room. `cache_folder` and `cache_limit_mb` in the config's `[music]` table change both; a limit of 0 keeps nothing.
 
 ## Keys

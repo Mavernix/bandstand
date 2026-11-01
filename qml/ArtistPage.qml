@@ -33,7 +33,7 @@ Flickable {
 
     function run(action) {
         if (action === "play") {
-            hub.playRequested(content.tracks, 0)
+            hub.playAllRequested(content.tracks)
         } else if (action === "shuffle") {
             hub.shuffleRequested(content.tracks)
         } else if (action === "save") {

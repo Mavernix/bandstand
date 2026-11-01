@@ -362,6 +362,150 @@ void CheckLibrary::saveAndUnsave()
     QCOMPARE(library.artists()->rowCount(), 0);
 }
 
+void CheckLibrary::removeFromHistory()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    library.recordPlayed(song("a"));
+    library.recordPlayed(song("b"));
+    library.recordPlayed(song("c"));
+
+    library.removeFromHistory("b");
+    QCOMPARE(ids_of(library.history()), QString("ca"));
+
+    QSignalSpy changed(library.history(), &TrackModel::changed);
+    library.removeFromHistory("x");
+    QCOMPARE(changed.count(), 0);
+
+    // played again, it's back on top
+    library.recordPlayed(song("b"));
+    QCOMPARE(ids_of(library.history()), QString("bca"));
+}
+
+void CheckLibrary::hiddenSongLeavesHistoryAndShelves()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    library.recordPlayed(song("a"));
+    library.recordPlayed(song("b"));
+    library.recordPlayed(song("c"));
+    QSignalSpy changed(&library, &Library::hiddenChanged);
+    const int version_before = library.hidden_version();
+
+    library.setHidden(song("b"), true);
+
+    QVERIFY(library.isHidden(song("b")));
+    QVERIFY(!library.isHidden(song("a")));
+    QCOMPARE(ids_of(library.history()), QString("ca"));
+    QCOMPARE(changed.count(), 1);
+    QVERIFY(library.hidden_version() > version_before);
+
+    // playing it by hand doesn't put it back
+    library.recordPlayed(song("b"));
+    QCOMPARE(ids_of(library.history()), QString("ca"));
+
+    // a home shelf: songs and cards, marked with their type
+    QVariantMap first = song("a");
+    first.insert("type", "track");
+    QVariantMap hidden = song("b");
+    hidden.insert("type", "track");
+    QVariantMap album = card("album", "MPREb_1");
+    album.insert("type", "card");
+    const QVariantList shown = library.withoutHidden({hidden, first, album, hidden});
+    QCOMPARE(shown.size(), 2);
+    QCOMPARE(shown.at(0).toMap().value("videoId").toString(), QString("a"));
+    QCOMPARE(shown.at(0).toMap().value("type").toString(), QString("track"));
+    QCOMPARE(shown.at(1).toMap().value("browseId").toString(), QString("MPREb_1"));
+
+    // hiding it twice keeps one entry
+    library.setHidden(song("b"), true);
+    library.flush();
+    QCOMPARE(read_json(directory.path() + "/hidden.json").value("tracks").toArray().size(), 1);
+}
+
+void CheckLibrary::hiddenSongStaysInLikedAndPlaylists()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    const QString id = library.createPlaylist("Jokes");
+    library.addToPlaylist(id, song("v"));
+    library.setLiked(song("v"), true);
+
+    library.setHidden(song("v"), true);
+
+    QVERIFY(library.isLiked("v"));
+    QCOMPARE(ids_of(library.liked()), QString("v"));
+    QVERIFY(library.playlistHas(id, "v"));
+    QCOMPARE(ids_of(library.playlistTracks(id)), QString("v"));
+}
+
+void CheckLibrary::hidingMatchesOtherVersionsOfTheSong()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+
+    QVariantMap valhalla = song("v1");
+    valhalla.insert("title", "VALHALLA CALLING");
+    valhalla.insert("artist", "Ragal Ironbull");
+    // the same song as a music video, from the artist's topic channel
+    QVariantMap video = song("v2");
+    video.insert("title", "Valhalla  Calling");
+    video.insert("artist", "Ragal Ironbull - Topic");
+    // someone else's song of the same name isn't it
+    QVariantMap cover = song("v3");
+    cover.insert("title", "VALHALLA CALLING");
+    cover.insert("artist", "Someone Else");
+
+    library.recordPlayed(video);
+    library.recordPlayed(cover);
+    library.recordPlayed(song("a"));
+    library.setHidden(valhalla, true);
+
+    QVERIFY(library.isHidden(video));
+    QVERIFY(!library.isHidden(cover));
+    QCOMPARE(ids_of(library.history()), QString("av3"));
+
+    // showing either version again shows the song
+    library.setHidden(video, false);
+    QVERIFY(!library.isHidden(valhalla));
+    QVERIFY(!library.isHidden(video));
+
+    // without a title or artist only the video id counts
+    QVariantMap nameless = song("n1");
+    nameless.insert("title", "");
+    nameless.insert("artist", "");
+    library.setHidden(nameless, true);
+    QVariantMap other_nameless = nameless;
+    other_nameless.insert("videoId", "n2");
+    QVERIFY(library.isHidden(nameless));
+    QVERIFY(!library.isHidden(other_nameless));
+}
+
+void CheckLibrary::showingAgain()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    library.setHidden(song("a"), true);
+    QSignalSpy changed(&library, &Library::hiddenChanged);
+
+    library.setHidden(song("a"), false);
+    QVERIFY(!library.isHidden(song("a")));
+    QCOMPARE(changed.count(), 1);
+    QCOMPARE(library.withoutHidden({song("a")}).size(), 1);
+    library.recordPlayed(song("a"));
+    QCOMPARE(ids_of(library.history()), QString("a"));
+
+    // the history doesn't get back what hiding took out of it
+    library.setHidden(song("a"), true);
+    library.setHidden(song("a"), false);
+    QCOMPARE(library.history()->rowCount(), 0);
+
+    // showing a song that isn't hidden changes nothing
+    changed.clear();
+    library.setHidden(song("z"), false);
+    QCOMPARE(changed.count(), 0);
+}
+
 void CheckLibrary::roundTripThroughFiles()
 {
     QTemporaryDir directory;
@@ -510,6 +654,39 @@ void CheckLibrary::failedWriteIsRetried()
     QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(blocker + "/" + id + ".json"), 5000);
     QCOMPARE(read_json(blocker + "/" + id + ".json").value("name").toString(), QString("Mix"));
     QVERIFY(library.problem().isEmpty());
+}
+
+void CheckLibrary::hiddenSongsSurviveReload()
+{
+    QTemporaryDir directory;
+    {
+        Library library(directory.path());
+        library.recordPlayed(song("a"));
+        library.setHidden(song("h1"), true);
+        library.setHidden(song("h2"), true);
+        library.setHidden(song("h3"), true);
+        library.setHidden(song("h3"), false);
+    }
+
+    // same shape as liked.json, newest first
+    const QJsonArray tracks = read_json(directory.path() + "/hidden.json").value("tracks").toArray();
+    QCOMPARE(tracks.size(), 2);
+    QCOMPARE(tracks.at(0).toObject().value("video_id").toString(), QString("h2"));
+    QCOMPARE(tracks.at(0).toObject().value("title").toString(), QString("Song h2"));
+
+    // as if it crashed between writing hidden.json and history.json
+    QFile history(directory.path() + "/history.json");
+    QVERIFY(history.open(QIODevice::WriteOnly));
+    QJsonArray played{QJsonObject::fromVariantMap(track_of("h1").to_helper()),
+                      QJsonObject::fromVariantMap(track_of("a").to_helper())};
+    history.write(QJsonDocument(QJsonObject{{"tracks", played}}).toJson());
+    history.close();
+
+    Library again(directory.path());
+    QVERIFY(again.isHidden(song("h1")));
+    QVERIFY(again.isHidden(song("h2")));
+    QVERIFY(!again.isHidden(song("h3")));
+    QCOMPARE(ids_of(again.history()), QString("a"));
 }
 
 QTEST_GUILESS_MAIN(CheckLibrary)

@@ -31,14 +31,16 @@ PopupMenu {
     }
 
     // row is the song's row in the page's list, or -1 (e.g. a song on a home shelf).
-    // removal: what the page lets the song be removed from, see MenuItems.songMenu
+    // removal: what the page lets the song be removed from, see MenuItems.songMenu;
+    // a playlist removes by row, the history by video id
     function openSongMenu(song, row, removal, x, y) {
         const playlists = []
         for (let i = 0; i < library.playlists.count; i++) {
             const id = library.playlists.idAt(i)
             playlists.push({ id: id, name: library.playlistName(id), has: library.playlistHas(id, song.videoId) })
         }
-        const items = MenuItems.songMenu(strings, library.isLiked(song.videoId), playlists, row < 0 ? "" : removal)
+        const items = MenuItems.songMenu(strings, library.isLiked(song.videoId), library.isHidden(song), playlists,
+                                         removal === "playlist" && row < 0 ? "" : removal)
         show(items, { kind: "song", song: song, row: row }, x, y)
     }
 

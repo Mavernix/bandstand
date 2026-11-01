@@ -68,6 +68,14 @@ Window {
         }
     }
 
+    // hiding also takes it out of the history and up next (Library, PlayQueue); one that's
+    // playing plays on
+    function toggleHidden(song) {
+        const hide = !userLibrary.isHidden(song)
+        userLibrary.setHidden(song, hide)
+        say(hide ? strings.notice_hidden : strings.notice_unhidden)
+    }
+
     function startRenaming(id) {
         navigation.show("mine:" + id)
         navigation.renaming = true
@@ -229,6 +237,7 @@ Window {
         renaming: navigation.renaming
 
         onPlayRequested: (songs, row) => playback.playSongs(songs, row)
+        onPlayAllRequested: songs => playback.playAll(songs)
         onShuffleRequested: songs => playback.playShuffled(songs)
         onPlayItemsRequested: (items, index) => playback.playItems(items, index)
         onPlayCardRequested: (kind, id) => playback.playCard(kind, id)
@@ -238,7 +247,9 @@ Window {
         onSongMenuRequested: (song, row, x, y) => {
             const place = pages.mapToItem(window.contentItem, x, y)
             const kind = navigation.route.kind
-            const removal = kind === "mine" ? "playlist" : kind === "history" ? "history" : ""
+            // home's recently played shelf is the history too
+            const fromHistory = kind === "history" || song.fromHistory === true
+            const removal = kind === "mine" ? "playlist" : fromHistory ? "history" : ""
             menus.openSongMenu(song, row, removal, place.x, place.y)
         }
         onCardMenuRequested: (card, x, y) => {
@@ -396,6 +407,12 @@ Window {
             case "remove":
                 pages.songs.removeAt(row)
                 break
+            case "removeHistory":
+                window.userLibrary.removeFromHistory(song.videoId)
+                break
+            case "hide":
+                window.toggleHidden(song)
+                break
             case "newPlaylist":
                 window.userLibrary.addToPlaylist(window.newPlaylist(), song)
                 break
@@ -415,7 +432,7 @@ Window {
         }
         onPlaylistAction: (action, id) => {
             if (action === "play") {
-                playback.playSongs(window.userLibrary.playlistTracks(id), 0)
+                playback.playAll(window.userLibrary.playlistTracks(id))
             } else if (action === "rename") {
                 window.startRenaming(id)
             } else if (action === "delete") {

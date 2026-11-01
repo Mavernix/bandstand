@@ -52,6 +52,8 @@ Item {
     }
 
     signal playRequested(var songs, int row)
+    // the play button: from the top, hidden songs left out
+    signal playAllRequested(var songs)
     signal shuffleRequested(var songs)
     // a list of track maps (home shelves)
     signal playItemsRequested(var items, int index)

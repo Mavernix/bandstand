@@ -85,7 +85,7 @@ Item {
     function run(action) {
         switch (action) {
         case "play":
-            hub.playRequested(songs, 0)
+            hub.playAllRequested(songs)
             break
         case "shuffle":
             hub.shuffleRequested(songs)

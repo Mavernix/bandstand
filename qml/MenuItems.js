@@ -45,7 +45,8 @@ function find(items, id) {
 
 // playlists: [{ id, name, has }], has = the song is already in it
 // removal: "playlist", "history" or "" for what the current page lets you remove from
-function songMenu(strings, liked, playlists, removal) {
+// hidden: the song isn't suggested (Library.isHidden)
+function songMenu(strings, liked, hidden, playlists, removal) {
     const playlistItems = [item("newPlaylist", strings.menu_new_playlist), separator()]
     for (const playlist of playlists) {
         playlistItems.push(item("toPlaylist", playlist.name, {
@@ -62,11 +63,13 @@ function songMenu(strings, liked, playlists, removal) {
         item("", strings.menu_add_to_playlist, { children: playlistItems }),
         item("radio", strings.menu_start_radio)
     ]
+    items.push(separator())
     if (removal === "playlist") {
-        items.push(separator(), item("remove", strings.menu_remove_playlist))
+        items.push(item("remove", strings.menu_remove_playlist))
     } else if (removal === "history") {
-        items.push(separator(), item("remove", strings.menu_remove_history))
+        items.push(item("removeHistory", strings.menu_remove_history))
     }
+    items.push(item("hide", hidden ? strings.menu_unhide : strings.menu_hide))
     return numbered(items)
 }
 

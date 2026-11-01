@@ -26,10 +26,17 @@ class CheckLibrary : public QObject
     void replayingTopSongLeavesHistoryAlone();
     void saveAndUnsave();
 
+    void removeFromHistory();
+    void hiddenSongLeavesHistoryAndShelves();
+    void hiddenSongStaysInLikedAndPlaylists();
+    void hidingMatchesOtherVersionsOfTheSong();
+    void showingAgain();
+
     void roundTripThroughFiles();
     void playlistOrderSurvivesReload();
     void writesAreBatchedAndFlushedOnExit();
     void corruptFileIsMovedAside();
     void unwritableFolderIsReported();
     void failedWriteIsRetried();
+    void hiddenSongsSurviveReload();
 };

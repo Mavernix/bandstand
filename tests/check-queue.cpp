@@ -1,10 +1,12 @@
 #include "check-queue.hpp"
 
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtTest>
 
 #include <algorithm>
 
+#include "../library.hpp"
 #include "../play-queue.hpp"
 #include "../track-model.hpp"
 #include "../track.hpp"
@@ -321,4 +323,147 @@ void CheckQueue::placeChangedOnlyOnRealChanges()
     QCOMPARE(changed.count(), 4);
 }
 
-QTEST_APPLESS_MAIN(CheckQueue)
+// hides songs by video id, in a library of its own
+static void hide(Library& library, const QString& id)
+{
+    library.setHidden(Track::from_helper(helper_song(id)).to_qml(), true);
+}
+
+void CheckQueue::playFromLeavesOutHiddenButNotThePickedSong()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    TrackModel results;
+    fill_results(results, 5);
+    PlayQueue queue;
+    queue.set_library(&library);
+    hide(library, "b");
+    hide(library, "d");
+
+    queue.playFrom(&results, 1);
+    QCOMPARE(ids_of(queue), QString("abce"));
+    QCOMPARE(queue.current(), 1);
+
+    queue.playFrom(&results, 2);
+    QCOMPARE(ids_of(queue), QString("ace"));
+    QCOMPARE(queue.currentTrack().value("videoId").toString(), QString("c"));
+}
+
+void CheckQueue::playListLeavesOutHidden()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    PlayQueue queue;
+    queue.set_library(&library);
+    hide(library, "b");
+
+    // a home shelf: a card has no video id and is skipped anyway
+    const QVariantList shelf{
+        Track::from_helper(helper_song("a")).to_qml(),
+        Track::from_helper(helper_song("b")).to_qml(),
+        QVariantMap{{"type", "card"}, {"browseId", "MPREb_1"}},
+        Track::from_helper(helper_song("c")).to_qml(),
+    };
+    queue.playList(shelf, 3);
+    QCOMPARE(ids_of(queue), QString("ac"));
+    QCOMPARE(queue.currentTrack().value("videoId").toString(), QString("c"));
+}
+
+void CheckQueue::radioKeepsItsHiddenSeed()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    TrackModel radio;
+    fill_results(radio, 4);
+    PlayQueue queue;
+    queue.set_library(&library);
+    hide(library, "a");
+    hide(library, "c");
+
+    // the radio was started from a, by hand
+    queue.playFrom(&radio, 0);
+    QCOMPARE(ids_of(queue), QString("abd"));
+    QCOMPARE(queue.current(), 0);
+}
+
+void CheckQueue::playAllStartsAtFirstShownSong()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    TrackModel results;
+    fill_results(results, 3);
+    PlayQueue queue;
+    queue.set_library(&library);
+    hide(library, "a");
+
+    queue.playAll(&results);
+    QCOMPARE(ids_of(queue), QString("bc"));
+    QCOMPARE(queue.current(), 0);
+
+    // nothing but hidden songs: asked for, so they play
+    hide(library, "b");
+    hide(library, "c");
+    queue.playAll(&results);
+    QCOMPARE(ids_of(queue), QString("abc"));
+    QCOMPARE(queue.current(), 0);
+
+    TrackModel empty;
+    queue.playAll(&empty);
+    queue.playAll(nullptr);
+    QCOMPARE(ids_of(queue), QString("abc"));
+}
+
+void CheckQueue::playShuffledLeavesOutHidden()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    TrackModel results;
+    fill_results(results, 6);
+    PlayQueue queue;
+    queue.set_library(&library);
+    hide(library, "c");
+
+    queue.playShuffled(&results);
+    QString ids = ids_of(queue);
+    std::sort(ids.begin(), ids.end());
+    QCOMPARE(ids, QString("abdef"));
+}
+
+void CheckQueue::hidingDropsSongFromQueueButNotThePlayingOne()
+{
+    QTemporaryDir directory;
+    Library library(directory.path());
+    TrackModel results;
+    fill_results(results, 5);
+    PlayQueue queue;
+    queue.set_library(&library);
+    // played twice: as the next song and again later
+    queue.playFrom(&results, 1);
+    queue.addToEnd(Track::from_helper(helper_song("c")).to_qml());
+    QCOMPARE(ids_of(queue), QString("abcdec"));
+    QSignalSpy changed(&queue, &PlayQueue::placeChanged);
+
+    hide(library, "c");
+    QCOMPARE(ids_of(queue), QString("abde"));
+    QCOMPARE(queue.current(), 1);
+    QCOMPARE(changed.count(), 1);
+
+    // played already: gone too, so repeat all doesn't bring it back
+    hide(library, "a");
+    QCOMPARE(ids_of(queue), QString("bde"));
+    QCOMPARE(queue.current(), 0);
+
+    // the playing song stays until it's over
+    hide(library, "b");
+    QCOMPARE(ids_of(queue), QString("bde"));
+    QCOMPARE(queue.currentTrack().value("videoId").toString(), QString("b"));
+
+    // shown again doesn't put it back, nor touch the queue
+    changed.clear();
+    library.setHidden(Track::from_helper(helper_song("c")).to_qml(), false);
+    QCOMPARE(ids_of(queue), QString("bde"));
+    QCOMPARE(changed.count(), 0);
+}
+
+// a library uses timers, so this needs an event loop
+QTEST_GUILESS_MAIN(CheckQueue)
