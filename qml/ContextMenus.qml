@@ -40,7 +40,9 @@ PopupMenu {
             playlists.push({ id: id, name: library.playlistName(id), has: library.playlistHas(id, song.videoId) })
         }
         const items = MenuItems.songMenu(strings, library.isLiked(song.videoId), library.isHidden(song), playlists,
-                                         removal === "playlist" && row < 0 ? "" : removal)
+                                         removal === "playlist" && row < 0 ? "" : removal,
+                                         // a local song's id is its file:// url (MusicClient::is_local)
+                                         !(song.videoId ?? "").startsWith("file:"))
         show(items, { kind: "song", song: song, row: row }, x, y)
     }
 

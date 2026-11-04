@@ -35,6 +35,7 @@ Item {
         case "mine": return library.playlistTracks(route.id)
         case "album":
         case "playlist":
+        case "local":
         case "artist": return contentPage !== null ? contentPage.tracks : null
         }
         return null

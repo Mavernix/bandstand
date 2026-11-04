@@ -12,3 +12,5 @@ urllib3==2.8.0
 idna==3.20
 certifi==2026.10.23
 charset-normalizer==3.5.2
+# reads the tags of local songs (helper/local_music.py)
+mutagen==1.48.1

@@ -9,7 +9,7 @@
 #include "card-model.hpp"
 #include "track-model.hpp"
 
-// an album, artist, playlist or home page. handed to qml empty and loading, filled
+// an album, artist, playlist, home or local files page. handed to qml empty and loading, filled
 // when the helper answers. which fields get set depends on the kind, see fill() and
 // the answers in helper/youtube_music.py.
 class ContentPage : public QObject

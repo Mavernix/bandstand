@@ -33,6 +33,7 @@ const defaults = {
     page_history: "History",
     page_albums: "Albums",
     page_artists: "Artists",
+    page_local: "Local Files",
     section_top_songs: "Top Songs",
     section_albums: "Albums",
     section_singles: "Singles",
@@ -45,6 +46,7 @@ const defaults = {
     empty_albums: "",
     empty_artists: "",
     empty_remote: "",
+    empty_local: "",
     nothing_found: "Nothing found for “%1”.",
 
     queue_title: "Up Next",

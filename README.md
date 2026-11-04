@@ -1,6 +1,6 @@
 # Bandstand
 
-A music player for [Mavernix](https://github.com/Mavernix/mavernix). Search YouTube Music, play songs, keep playlists and liked songs. No account needed.
+A music player for [Mavernix](https://github.com/Mavernix/mavernix). Search YouTube Music, play songs and the music on your computer, keep playlists and liked songs. No account needed.
 
 It takes its look from whatever Mavernix theme you're running.
 
@@ -12,7 +12,7 @@ Open the App Store in Mavernix and get Bandstand. It comes with everything it ne
 
 ## Build
 
-You need Qt 6 (with Qt Multimedia), meson, python, `python-ytmusicapi`, `yt-dlp` and `deno`.
+You need Qt 6 (with Qt Multimedia), meson, python, `python-ytmusicapi`, `yt-dlp`, `deno` and `python-mutagen`.
 
 ```sh
 meson setup build
@@ -22,6 +22,8 @@ meson compile -C build
 Start `build/bandstand` from a Mavernix session.
 
 Your library lives in `~/.local/share/bandstand` as plain JSON files.
+
+Local Files lists the songs in your music folder (`~/Music`, or wherever your desktop's music folder is). To use other folders, set `local_folders` in the config's `[music]` table to a folder or a list of them. Local songs can be liked, added to playlists and queued like any other; Start Radio needs a song from YouTube Music. Their tags are read once and kept in `~/.cache/bandstand/local`, so the page opens quickly after the first time and picks up new or changed files on its own. Covers come from a `cover.jpg` or `folder.jpg` next to the songs, or else from a picture in the songs themselves. A song you move or rename is a new song to Bandstand.
 
 Right-click a song for what you can do with it. On Home's Recently Played shelf and in History, that includes Remove from History. Don't Suggest This Song keeps a song off Home's shelves and out of History, and Up Next skips it unless you pick it yourself; Liked Songs and your playlists keep it. Search finds it still, and right-clicking it there offers Suggest This Song Again. Hidden songs are listed in `hidden.json`.
 

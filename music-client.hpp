@@ -46,10 +46,15 @@ class MusicClient : public QObject
     // looks up a song that's coming up and has the helper download it into its cache,
     // so it starts right away. nothing comes back; a failure only gets logged.
     Q_INVOKABLE void prepareAudio(const QString& video_id);
-    // kind is "album", "artist", "playlist" or "home" (browse_id is ignored for home).
+    // kind is "album", "artist", "playlist", "home" or "local" (browse_id is ignored for
+    // the last two).
     // pages are cached and only re-requested when they failed or went stale.
     Q_INVOKABLE ContentPage *page(const QString& kind, const QString& browse_id);
+    // local songs never reach the helper; startRadio() fails for them
     Q_INVOKABLE void startRadio(const QString& video_id);
+
+    // a song from the music folders (the "local" page), whose id is its file:// url
+    static bool is_local(const QString& video_id);
 
   signals:
     void searchingChanged();
@@ -60,6 +65,9 @@ class MusicClient : public QObject
     void radioFailed(const QString& video_id, const QString& message);
 
   private:
+    // the helper retries youtube a few times itself; past this we give up on it
+    static constexpr int REQUEST_TIMEOUT_MS = 30000;
+
     enum class Kind
     {
         Search,
@@ -79,7 +87,7 @@ class MusicClient : public QObject
 
     // returns an error message, or empty if the helper is running
     QString start_helper();
-    int send(QJsonObject message, const Request& request);
+    int send(QJsonObject message, const Request& request, int timeout_ms = REQUEST_TIMEOUT_MS);
     void request_page(ContentPage *page);
     void read_output();
     void read_errors();

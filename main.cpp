@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QStandardPaths>
 
 #include <cstdio>
 #include <cstdlib>
@@ -105,6 +106,32 @@ int main(int argc, char **argv)
     {
         helper_arguments << QStringLiteral("--cache-limit-mb")
                          << QString::number(music_config.value(QStringLiteral("cache_limit_mb")).toInt());
+    }
+
+    // local songs: config.music.local_folders, a folder or a list of them, else the music folder
+    QStringList music_folders;
+    const QVariant local_folders = music_config.value(QStringLiteral("local_folders"));
+    if (!local_folders.isValid())
+    {
+        music_folders << QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+    }
+    else if (local_folders.typeId() == QMetaType::QVariantList)
+    {
+        for (const QVariant& entry : local_folders.toList())
+        {
+            music_folders << expanded(entry.toString());
+        }
+    }
+    else
+    {
+        music_folders << expanded(local_folders.toString());
+    }
+    for (const QString& music_folder : std::as_const(music_folders))
+    {
+        if (!music_folder.isEmpty())
+        {
+            helper_arguments << QStringLiteral("--music-folder") << music_folder;
+        }
     }
 
     MusicClient client(helper_directory + QStringLiteral("/music_helper.py"), helper_arguments);
