@@ -1,6 +1,7 @@
 #include "music-client.hpp"
 
 #include <QJsonArray>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QTimer>
 
@@ -10,10 +11,11 @@
 // starting python takes milliseconds, so hitting this means python3 is missing
 static constexpr int HELPER_START_TIMEOUT_MS = 5000;
 static constexpr int RECENT_ERRORS_LIMIT_CHARS = 2000;
+// the first scan of a big music folder reads every file's tags. nothing on the network,
+// so it can't hang the way youtube can
+static constexpr int LOCAL_SCAN_TIMEOUT_MS = 10 * 60 * 1000;
 // it may be mid network request when we quit
 static constexpr int HELPER_END_TIMEOUT_MS = 500;
-// the helper retries youtube a few times itself; past this we give up on it
-static constexpr int REQUEST_TIMEOUT_MS = 30000;
 
 MusicClient::MusicClient(const QString& helper_script, const QStringList& helper_arguments, QObject *parent)
     : QObject(parent)
@@ -97,8 +99,32 @@ void MusicClient::search(const QString& query, const QString& kind)
     update_searching();
 }
 
+bool MusicClient::is_local(const QString& video_id)
+{
+    return video_id.startsWith(QLatin1String("file:"));
+}
+
 void MusicClient::findAudio(const QString& video_id)
 {
+    // played straight from disk. answered from the event loop like a helper answer,
+    // so qml sees the same order of events
+    if (is_local(video_id))
+    {
+        const QUrl url(video_id);
+        const bool there = QFileInfo::exists(url.toLocalFile());
+        QTimer::singleShot(0, this, [this, video_id, url, there] {
+            if (there)
+            {
+                emit audioFound(video_id, url);
+            }
+            else
+            {
+                emit audioNotFound(video_id, tr("%1 isn't there anymore.").arg(url.toLocalFile()));
+            }
+        });
+        return;
+    }
+
     const QString error = start_helper();
     if (!error.isEmpty())
     {
@@ -110,7 +136,7 @@ void MusicClient::findAudio(const QString& video_id)
 
 void MusicClient::prepareAudio(const QString& video_id)
 {
-    if (start_helper().isEmpty())
+    if (!is_local(video_id) && start_helper().isEmpty())
     {
         send({{"command", "prepare"}, {"video_id", video_id}}, {Kind::Prepare, video_id, {}, nullptr});
     }
@@ -118,6 +144,14 @@ void MusicClient::prepareAudio(const QString& video_id)
 
 void MusicClient::startRadio(const QString& video_id)
 {
+    if (is_local(video_id))
+    {
+        QTimer::singleShot(0, this, [this, video_id] {
+            emit radioFailed(video_id, tr("Radio needs a song from YouTube Music."));
+        });
+        return;
+    }
+
     const QString error = start_helper();
     if (!error.isEmpty())
     {
@@ -157,12 +191,13 @@ void MusicClient::request_page(ContentPage *page)
         return;
     }
 
+    const bool local = page->kind() == QLatin1String("local");
     QJsonObject message{{"command", page->kind()}};
-    if (page->kind() != QLatin1String("home"))
+    if (page->kind() != QLatin1String("home") && !local)
     {
         message.insert(QStringLiteral("browse_id"), page->browse_id());
     }
-    send(message, {Kind::Page, {}, {}, page});
+    send(message, {Kind::Page, {}, {}, page}, local ? LOCAL_SCAN_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
 }
 
 QString MusicClient::start_helper()
@@ -183,13 +218,13 @@ QString MusicClient::start_helper()
     return {};
 }
 
-int MusicClient::send(QJsonObject message, const Request& request)
+int MusicClient::send(QJsonObject message, const Request& request, int timeout_ms)
 {
     const int id = next_id++;
     message.insert(QStringLiteral("id"), id);
     waiting.insert(id, request);
     helper.write(QJsonDocument(message).toJson(QJsonDocument::Compact) + '\n');
-    QTimer::singleShot(REQUEST_TIMEOUT_MS, this, [this, id] { time_out(id); });
+    QTimer::singleShot(timeout_ms, this, [this, id] { time_out(id); });
     return id;
 }
 
@@ -342,12 +377,19 @@ void MusicClient::fail(int id, const Request& request, const QString& message)
 
 void MusicClient::time_out(int id)
 {
-    if (waiting.contains(id))
+    if (!waiting.contains(id))
     {
-        fail(id, waiting.take(id),
-            tr("The music helper did not answer in %1 seconds. Check the network connection, or try again.")
-                .arg(REQUEST_TIMEOUT_MS / 1000));
+        return;
     }
+    const Request request = waiting.take(id);
+    if (request.kind == Kind::Page && request.page != nullptr && request.page->kind() == QLatin1String("local"))
+    {
+        fail(id, request, tr("Reading your music folders took too long. Try again, the songs read so far are kept."));
+        return;
+    }
+    fail(id, request,
+        tr("The music helper did not answer in %1 seconds. Check the network connection, or try again.")
+            .arg(REQUEST_TIMEOUT_MS / 1000));
 }
 
 void MusicClient::helper_ended(int exit_code, QProcess::ExitStatus status)

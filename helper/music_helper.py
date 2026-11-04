@@ -14,9 +14,12 @@
 #   stream    video_id   -> url, expires_epoch (0 if unknown), duration_seconds
 #   prepare   video_id   -> nothing, once the song is looked up; it then downloads
 #                           into the song cache, so playing it later starts at once
+#   local                -> folders (as shown to the user), tracks: the songs in the
+#                           music folders, see local_music.py. the app plays these itself
 #
 # options: --cache-dir DIR (default $XDG_CACHE_HOME/bandstand/audio) and
 # --cache-limit-mb N (default 2048, 0 keeps no songs on disk). see song_cache.py.
+# --music-folder DIR, repeatable: where local songs are (default: none, so "local" fails).
 #
 # requests run concurrently (stream lookups take seconds), so responses can come
 # back out of order. match them by id.
@@ -29,6 +32,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from audio_relay import AudioRelay
+from local_music import LocalMusic
 from song_cache import SongCache
 from streams import YtDlpStreams
 from youtube_music import HelperError, YouTubeMusic
@@ -47,13 +51,15 @@ REQUIRED_ARGS = {
     "playlist": ("browse_id",),
     "radio": ("video_id",),
     "home": (),
+    "local": (),
 }
 
 
 class Helper:
-    def __init__(self, music, streams):
+    def __init__(self, music, streams, local=None):
         self._music = music
         self._streams = streams
+        self._local = local
 
     def handle(self, request):
         """Returns the response dict for one request. Never raises."""
@@ -94,6 +100,10 @@ class Helper:
             return self._music.playlist(request["browse_id"])
         if command == "radio":
             return self._music.radio(request["video_id"])
+        if command == "local":
+            if self._local is None:
+                raise HelperError("No music folders are set.")
+            return self._local.songs()
         return self._music.home()
 
 
@@ -122,15 +132,20 @@ def serve(lines, output, helper):
             pool.submit(respond, request)
 
 
-def default_cache_dir():
+def cache_home():
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    return os.path.join(base, "bandstand", "audio")
+    return os.path.join(base, "bandstand")
+
+
+def default_cache_dir():
+    return os.path.join(cache_home(), "audio")
 
 
 def main():
     parser = argparse.ArgumentParser(description="search youtube music and play songs, over json lines")
     parser.add_argument("--cache-dir", default=default_cache_dir())
     parser.add_argument("--cache-limit-mb", type=int, default=DEFAULT_CACHE_LIMIT_MB)
+    parser.add_argument("--music-folder", action="append", default=[])
     options = parser.parse_args()
 
     cache = None
@@ -139,7 +154,8 @@ def main():
         # a smaller limit than last time, or leftovers of a crash
         cache.evict()
     relay = AudioRelay(cache)
-    serve(sys.stdin, sys.stdout, Helper(YouTubeMusic(), YtDlpStreams(relay, cache)))
+    local = LocalMusic(options.music_folder, os.path.join(cache_home(), "local"))
+    serve(sys.stdin, sys.stdout, Helper(YouTubeMusic(), YtDlpStreams(relay, cache), local))
 
 
 if __name__ == "__main__":

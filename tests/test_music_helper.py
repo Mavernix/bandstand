@@ -137,6 +137,22 @@ class HandleTest(unittest.TestCase):
         self.assertEqual(response, {"id": 9, "ok": True})
         self.assertEqual(streams.prepared, ["abc"])
 
+    def test_local_lists_the_music_folders(self):
+        class FakeLocal:
+            def songs(self):
+                return {"folders": ["~/Music"], "tracks": [{"video_id": "file:///m/a.flac"}]}
+
+        helper = music_helper.Helper(FakeMusic(), FakeStreams(), FakeLocal())
+        response = helper.handle({"id": 3, "command": "local"})
+        self.assertEqual(
+            response, {"id": 3, "ok": True, "folders": ["~/Music"], "tracks": [{"video_id": "file:///m/a.flac"}]}
+        )
+
+    def test_local_without_folders_fails_politely(self):
+        response = make_helper().handle({"id": 3, "command": "local"})
+        self.assertFalse(response["ok"])
+        self.assertIn("music folders", response["error"])
+
     def test_unknown_command_lists_known_ones(self):
         response = make_helper().handle({"id": 1, "command": "dance"})
         self.assertFalse(response["ok"])

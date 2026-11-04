@@ -102,6 +102,16 @@ void ContentPage::fill(const QVariantMap& answer)
         page_albums.set_cards(list("albums"));
         page_singles.set_cards(list("singles"));
     }
+    else if (page_kind == QLatin1String("local"))
+    {
+        QStringList folders;
+        for (const QVariant& folder : list("folders"))
+        {
+            folders << folder.toString();
+        }
+        page_subtitle = folders.join(QStringLiteral(" · "));
+        page_tracks.set_tracks(list("tracks"));
+    }
     else if (page_kind == QLatin1String("home"))
     {
         page_shelves = shelves_from_helper(list("shelves"));

@@ -202,7 +202,8 @@ QVariantMap MediaControls::metadata() const
     QVariantMap map{
         {QStringLiteral("mpris:trackid"), QVariant::fromValue(track_path())},
         {QStringLiteral("xesam:title"), current_track.value(QStringLiteral("title")).toString()},
-        {QStringLiteral("xesam:url"), SONG_URL_PREFIX + video_id},
+        // a local song's id is its file:// url already
+        {QStringLiteral("xesam:url"), video_id.startsWith(QLatin1String("file:")) ? video_id : SONG_URL_PREFIX + video_id},
     };
 
     const QString artist = current_track.value(QStringLiteral("artist")).toString();

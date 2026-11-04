@@ -1,5 +1,6 @@
 // page names:
 //   "search", "home", "liked", "history", "albums", "artists"
+//   "local"                                  the songs in the music folders
 //   "mine:ID"                                the user's own playlist
 //   "album:ID", "artist:ID", "playlist:ID"   youtube music pages by browse id
 // config.music.sidebar uses the same names.
@@ -17,6 +18,7 @@ function defaultSidebar(strings) {
         { label: strings.page_history, page: "history" },
         { label: strings.page_albums, page: "albums" },
         { label: strings.page_artists, page: "artists" },
+        { label: strings.page_local, page: "local" },
         { heading: strings.sidebar_playlists, playlists: true },
     ]
 }
@@ -36,11 +38,11 @@ function make(kind, id) {
 
 // pages the helper fetches, so they can be loading or fail
 function isRemote(kind) {
-    return kind === "album" || kind === "artist" || kind === "playlist" || kind === "home"
+    return kind === "album" || kind === "artist" || kind === "playlist" || kind === "home" || kind === "local"
 }
 
 // pages shown by SongPage
 function isSongPage(kind) {
     return kind === "liked" || kind === "history" || kind === "mine"
-        || kind === "album" || kind === "playlist"
+        || kind === "album" || kind === "playlist" || kind === "local"
 }

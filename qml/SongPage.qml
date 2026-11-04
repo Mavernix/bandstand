@@ -1,5 +1,6 @@
 // one list of songs under a header. serves liked, history, the user's playlists
-// ("mine") and youtube albums/playlists; the route kind picks the buttons.
+// ("mine"), youtube albums/playlists and the music folders ("local"); the route kind
+// picks the buttons.
 
 import QtQuick
 import "Format.js" as Format
@@ -14,7 +15,8 @@ Item {
     readonly property var strings: hub.strings
     readonly property var songs: hub.songs
     readonly property var content: hub.contentPage
-    readonly property bool isRemote: kind === "album" || kind === "playlist"
+    // filled by the helper, so it can be loading or fail
+    readonly property bool isRemote: kind === "album" || kind === "playlist" || kind === "local"
     readonly property int count: songs ? songs.count : 0
 
     // revision counter: trackAt() is a call, so the cover binding reads this to re-run on changes
@@ -33,6 +35,7 @@ Item {
         case "liked": return strings.page_liked
         case "history": return strings.page_history
         case "mine": return hub.library.playlistName(route.id)
+        case "local": return strings.page_local
         default: return content ? content.title : ""
         }
     }
@@ -40,7 +43,7 @@ Item {
     // summed from the songs even for youtube pages, so it matches the status bar
     readonly property string summary: Format.listSummary(count, songs ? songs.totalSeconds : 0, strings)
     readonly property string coverUrl: {
-        if (isRemote) {
+        if (isRemote && kind !== "local") {
             return content ? content.thumbnailUrl : ""
         }
         songsRevision
@@ -78,6 +81,7 @@ Item {
         case "liked": return strings.empty_liked
         case "history": return strings.empty_history
         case "mine": return strings.empty_playlist
+        case "local": return strings.empty_local
         default: return strings.empty_remote
         }
     }
